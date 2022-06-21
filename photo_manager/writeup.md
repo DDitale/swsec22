@@ -1,3 +1,5 @@
+# Photo Manager - Exploit
+
 Descrizione della challenge:
 > We have recently been informed that a group of hackers exploited a
 > vulnerability in a PC within another very secure network. Our

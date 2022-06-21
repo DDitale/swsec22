@@ -2,23 +2,20 @@ import serial
 from pprint import pprint
 from itertools import combinations
 from math import gcd
+#Import per la firma crittografica
 from Crypto.PublicKey import RSA
-#from Crypto.Cipher import PKCS1_v1_5
 from Crypto.Hash import SHA1
 from Crypto.Signature import pkcs1_15
 from Crypto.Signature import PKCS1_v1_5
 
 s = serial.Serial('/dev/ttyACM0',baudrate=19200, timeout=2)
-banner = s.readlines() 
-print(banner)
+s.readlines() # Lettura del banner
 s.write(b'1\r') 
 
-#s.timeout = 2
-
+# Dizionario per il salvataggio delle chiavi lette
 keys = {}
 
-#signature are SHA1 and PKCS1_v1_5
-_ = s.readline()
+s.readline()
 
 a = b''
 public_keys = []
@@ -46,9 +43,9 @@ for user in keys:
 #pprint(keys)
 
 n1 = None
-n2 = None
+#n2 = None
 p1 = None
-p2 = None
+#p2 = None
 q = None
 
 for pub1, pub2 in combinations(keys.values(), 2):
@@ -59,8 +56,8 @@ for pub1, pub2 in combinations(keys.values(), 2):
         q = massimo_comune_divisore
         n1 = pub1
         p1 = n1//q
-        n2 = pub2
-        p2 = n2//q
+        #n2 = pub2
+        #p2 = n2//q
 
 
 e = 65537 #Valore di default per RSA
@@ -70,22 +67,18 @@ e = 65537 #Valore di default per RSA
 # d è l'inverso moltiplicativo di e modulo (p-1)(q-1) y = pow(x, -1, p)
 
 phi1 = (p1-1)*(q-1)
-phi2 = (p2-1)*(q-1)
+#phi2 = (p2-1)*(q-1)
 
 d1 = pow(e, -1, phi1)
-d2 = pow(e, -1, phi2)
+#d2 = pow(e, -1, phi2)
 
 key_1 = RSA.construct((n1,e,d1,p1,q), consistency_check=True)
-key_2 = RSA.construct((n2,e,d2,p2,q), consistency_check=True)
-
-
-#pprint(key_1)
-#pprint(key_2)
+#key_2 = RSA.construct((n2,e,d2,p2,q), consistency_check=True)
 
 message_to_sign = b'admin'
 
 sign_1 = PKCS1_v1_5.new(key_1).sign(SHA1.new(message_to_sign))
-sign_2 = pkcs1_15.new(key_2).sign(SHA1.new(message_to_sign))
+#sign_2 = pkcs1_15.new(key_2).sign(SHA1.new(message_to_sign))
 
 s.close()
 import binascii

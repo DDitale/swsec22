@@ -1,8 +1,5 @@
-# Magic Number
+# Magic Number - Rev
 
-Challenge di Reverse Engineering
-
----
 Scarichiamo il file allegato alla challenge e lo rendiamo eseguibile con `chmod +x magic-number`
 
 Provando ad eseguirlo, ci chiede di inserire un numero: inserendo un numero a caso restituisce semplicemente `Wrong`
