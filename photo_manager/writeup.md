@@ -1,6 +1,6 @@
 # Photo Manager - Exploit
 
-Descrizione della challenge:
+Challenge description:
 > We have recently been informed that a group of hackers exploited a
 > vulnerability in a PC within another very secure network. Our
 > operative says the hacker in charge took a snapshot of the password,
@@ -13,24 +13,24 @@ Descrizione della challenge:
 > too. Can you breach their photo manager and take a quick look?
 
 
-Una volta caricato il binario sull'Arduino, collegandoci con il serial monitor (baudrate 19200) ci viene presentata questa finestra:
+Once the binary is loaded onto the Arduino, by connecting to the serial monitor (baud rate 19200) we are presented with the following window:
 ```
 [1] Login
 [2] Memory management
 ```
 
-Proviamo le varie voci di menu:
+“Let’s try the various menu options:
 
-Con `1` ci viene chiesto di inserire un token di accesso
+With `1`, we are asked to enter an access token.”
 ```
 Please authenticate yourself with your hardware token
 Please insert token. (8 characters)
 Token can only contain the characters [A-Z/a-z/0-9]
 ```
 
-Se inseriamo una stringa con caratteri speciali o minore di 8 caratteri ci ritorna il messaggio di errore `Hardware tokens are not of given ASCII sub-set. Aborting.`
+If we enter a string containing special characters or shorter than 8 characters, we receive the error message. `Hardware tokens are not of given ASCII sub-set. Aborting.`
 
-Se invece proseguiamo con l'inserire una stringa anche più lunga di 8 caratteri, prosegue con mostrare i primi 8 caratteri inseriti dall'utente
+If instead we proceed by entering a string longer than 8 characters, the program continues by displaying the first 8 characters entered by the user.
 
 ```
 Please authenticate yourself with your hardware token
@@ -44,17 +44,17 @@ Welcome ABCDEFGH
 [2] Memory management
 ```
 
-Con `2` viene mostrata un'informazione sulla memoria disponibile:
+With `2` nformation about the available memory is displayed:
 ```
 Total memory space: 4096 bytes
 Memory space used: 3979 bytes
 ```
 
-La memoria utilizzata però varia ad ogni esecuzione del programma.
+However, the used memory varies at each execution of the program.
 
-Se inseriamo un valore diverso da 1 o 2, ci riporta al menu di selezione, quindi proviamo a verificare se è possibile violare il token di accesso
+If we enter a value different from 1 or 2, the program returns us to the selection menu, so we try to verify whether it is possible to break the access token.
 
-Se inseriamo una stringa di grandi dimensioni, possiamo notare un messaggio di errore al posto del "Welcome" precedente:
+If we enter a very large string, we can observe an error message instead of the previous "Welcome" message:
 ```
 [1] Login
 [2] Memory management
@@ -77,16 +77,16 @@ Stack cookie corrupted.
 
 ![Bello spaccare tutto](./smash.jpg)
 
-Possiamo notare l'overflow di una variabile.
-A differenza di un sistema standard però, data l'architettura dell'Arduino, non potrà portarci ad avere code execution.
+We can observe a variable overflow.
+Unlike a standard system, however, due to the Arduino architecture, this cannot lead to code execution.
 
-Questo perché l'architettura AVR su cui è basata Arduino, non rispetta il modello di Von Neumann ma Harvard: in quest'ultima l'area dati è fisicamente separata dall'area istruzioni, perciò non possiamo inserire nello stack codice eseguibile.
+This is because the AVR architecture on which Arduino is based does not follow the Von Neumann model but the Harvard model: in the latter, the data memory area is physically separated from the instruction memory area, therefore we cannot place executable code on the stack.
 
 ![Architettura Harvard](./Harvard_architecture.png)
 
-Abbiamo verificato inoltre che l'errore si presenta con la stringa di 256 caratteri ma non con una da 26, proviamo a verificare quale è la dimensione massima della stringa che possiamo inserire
+We also verified that the error occurs with a 256-character string but not with a 26-character one, so we try to determine the maximum string size we can input.
 
-Per fare ciò utilizziamo la tecnica del fuzzing, ovvero usiamo input non propriamente validi tali da provocare nel programma un comportamento non previsto.
+To do this, we use the fuzzing technique, meaning we provide inputs that are not strictly valid in order to trigger unexpected behavior in the program.
 
 ```python
 import serial
@@ -109,13 +109,13 @@ print(f"Dim stringa {size}")
 s.close()
 ```
 
-Lanciando più volte lo script, vediamo che la dimensione della stringa non è costante ma è variabile. Usando il menu `[2] Memory management` però possiamo ricavare la relazione presente tra la dimensione di questa stringa e la memoria disponibile
+By running the script multiple times, we observe that the string size is not constant but variable. By using the menu`[2] Memory management` however, we can derive the relationship between the size of this string and the available memory.
 
 ![Screen offset](./offset_costante.png)
 
-Quindi confermiamo che la stringa effettiva ha dimensione massima `Memoria totale - memoria libera - 8`
+We therefore confirm that the effective string has a maximum size. `Memoria totale - memoria libera - 8`
 
-Ora possiamo provare a ricavare il contenuto dello stack cookie/canary presente
+We can now attempt to recover the content of the stack cookie / canary
 
 ```python
 ...
@@ -134,11 +134,11 @@ for i in range(255,1,-1): # Escludiamo \0
 ...
 ```
 
-Lanciando anche questo più volte, si nota che il primo byte dello stack cookie è proprio la dimensione dell'area della stringa utente!
+By running this multiple times as well, we can see that the first byte of the stack cookie is actually the size of the user string buffer itself!
 
 ![Primo byte stack cookie](./primo_byte_cookie.png)
 
-Proseguiamo quindi a trovare il secondo byte:
+We therefore proceed to find the second byte:
 ```python
 ...
 for i in range(1,256,1):
@@ -156,8 +156,8 @@ for i in range(1,256,1):
 ...
 ```
 
-Qui possiamo notare che il byte successivo sembra il numero di caratteri effettivo del nome utente:
+Here we can observe that the next byte appears to be the effective number of characters of the username:
 ![Secondo byte stack cookie](./secondo_byte_cookie.png)
 
-Proseguendo però con l'esecuzione, arrivati a `0xff` viene stampata una porzione di memoria, compresa la flag:
+However, by continuing the execution, once we reach `0xff` a portion of memory is printed, including the flag:
 ![Flag](./flag.png)
