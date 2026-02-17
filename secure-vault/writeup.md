@@ -1,22 +1,17 @@
 # Secure Vault - WEB
 
-> Clam saw all those cool celebrities posting everything they do on twitter, so he decided to give it a go himself. Turns out, that's a horrible idea. After recovering from his emotional trauma, he wrote a secure vault to store his deepest secrets. Legend has it that there's even a flag in there. Can you get it?
+> Clam saw all those cool celebrities posting everything they do on Twitter, so he decided to give it a try himself. It turned out to be a terrible idea. After recovering from his emotional trauma, he wrote a secure vault to store his deepest secrets. Legend has it that there’s even a flag in there. Can you get it?
 
 ---
 
-Accedendo alla homepage presente in descrizione, possiamo vedere una pagina con una form di login/registrazione
+By accessing the homepage mentioned in the description, we can see a page with a login/registration form.
 
-![home](./pics/01_home.png)
+After signing up, we can see a text field containing a string and a cookie set with a JWT (JSON Web Token).
 
-Dopo il signup, possiamo vedere un campo di testo con una stringa e un cookie settato con un JWT ([Json Web Token](https://jwt.io/)).
+We can retrieve the contents of the token using `https://jwt.io/#debugger-io`. In this way, we see that it contains the ID of the user who logged in.
 
-![saved_cookie](./pics/03_saved_cookie.png)
+Now, by looking at the source code of the challenge, we can notice that the goal is to visit the `/vault` endpoint while being an `unrestricted` user.
 
-Possiamo ricavare il contenuto del token usando `https://jwt.io/#debugger-io`. Vediamo così che contiene l'ID dell'utente che ha fatto l'accesso
-
-![decoded_cookie](./pics/04_decoded_cookie.png)
-
-Ora, guardando al sorgente della challenge, possiamo notare che l'obiettivo è visitare l'endpoint `/vault` mentre siamo utenti `unrestricted`
 
 ```js
 app.get("/vault", (req, res) => {
@@ -28,28 +23,29 @@ app.get("/vault", (req, res) => {
     res.type("text/plain").send(user.restricted ? user.vault : flag);
 });
 ```
-
-Tornando sul sito mentre siamo loggati, possiamo vedere che il contenuto di `user.vault` non è altro che il contenuto della textarea nella home:
+Returning to the site while logged in, we can see that the contents of `user.vault` are nothing more than the contents of the textarea on the homepage:
 
 ![set_vault](./pics/05_set_vault.png)
 
 ![vault](./pics/06_vault.png)
 
-Come visto quindi finora, dopo un login o una registrazione, il cookie viene settato con l'uid dell'utente e firmato con una chiave random.
+As observed so far, after a login or registration, the cookie is set with the user's UID and signed with a random key.
 
-Conoscendo già il formato della chiave (`0.[0-9]+`) si potrebbe pensare di usare un tool come [jwtcrack](https://github.com/brendan-rius/c-jwt-cracker) per creare un token ad hoc valido e saltare il check.
-Questo tool usa un attacco a forza bruta per cercare di ricavare il "secret" usato per firmare il token
+Knowing the key format (`0.[0-9]+`), one might think of using a tool such as [jwtcrack](https://github.com/brendan-rius/c-jwt-cracker) to create a valid ad hoc token and bypass the check.  
+This tool performs a brute-force attack to try to recover the secret used to sign the token.
 
+It can be executed with:
 
-Questo può essere lanciato con:
-`docker run -it --rm  jwtcrack [token] [charset] [maxlen] [algorithm]`
+`docker run -it --rm jwtcrack [token] [charset] [maxlen] [algorithm]`
 
-Quindi, nel nostro caso:
-`docker run -it --rm  jwtcrack eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiIwLjM0Nzc5Mjc3MTY2MDg4MjIiLCJpYXQiOjE2NTE1NzcwNDh9.asR5mHIczZ-s1tZHCoCNoLKtPsPFu8S46adyRwOYa-U 0.123456789 20 sha256`
+So, in our case:
 
-Dopo un giorno senza risposte, torniamo a porre attenzione al codice.
+`docker run -it --rm jwtcrack eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiIwLjM0Nzc5Mjc3MTY2MDg4MjIiLCJpYXQiOjE2NTE1NzcwNDh9.asR5mHIczZ-s1tZHCoCNoLKtPsPFu8S46adyRwOYa-U 0.123456789 20 sha256`
 
-In `express.js`, ogni applicazione ha una funzione `app.use` usata come middleware e richiamata ad ogni richiesta:
+After a day without any results, we turn our attention back to the code.
+
+In `express.js`, every application has an `app.use` function used as middleware and invoked on every request:
+
 
 ```js
 app.use((req, res, next) => {
@@ -65,9 +61,10 @@ app.use((req, res, next) => {
     next();
 });
 ```
-Possiamo qui notare che l'unica condizione tale per la quale viene settata la variabile è quella di usare un Token valido come cookie.
+Here we can observe that the only condition under which the variable is set is the use of a valid token as a cookie.
 
-Inoltre, la funzione di login (a differenza di quella di registrazione) non verifica mai che i campi della richiesta siano correttamente popolati:
+Furthermore, the login function (unlike the registration function) never verifies that the request fields are correctly populated.
+
 ```js
 app.post("/login", (req, res) => {
     const user = users.get(users.lookup(req.body.username));
@@ -83,25 +80,26 @@ app.post("/login", (req, res) => {
 });
 ```
 
-Possiamo usare queste informazioni a nostro vantaggio: facendo una richiesta di login con un body vuoto, dovrebbe essere generato un token valido.
+We can use this information to our advantage: by sending a login request with an empty body, a valid token should be generated.
 
-Per testare questa ipotesi usiamo un tool chiamato [Burp](https://portswigger.net/burp/communitydownload): con questo proxy possiamo intercettare la richiesta di login e modificarne il contenuto.
+To test this hypothesis, we use a tool called [Burp](https://portswigger.net/burp/communitydownload). With this proxy, we can intercept the login request and modify its contents.
 
 ![login_aaa](./pics/07_alogin.png)
 
-![richiesta_login](./pics/07_login%20(copy).png)
+![login_request](./pics/07_login%20(copy).png)
 
-Qui possiamo spostare la richiesta al tab "Repeater" dove è possibile modificare e reinviarla senza problemi
+Here we can move the request to the **Repeater** tab, where it can be edited and resent easily.
 
 ![repeater](./pics/09_repeater.png)
 
 ![login_no_creds](./pics/10_login_without_creds_crop.png)
 
-Ora abbiamo un token valido ma che non è associato a nessun utente!
+We now have a valid token that is not associated with any user!
 
 ![decoded_jwt](./pics/11_decoded_jwt.png)
 
-Possiamo vedere il perché abbia funzionato rileggendo le funzioni chiamate nel metodo di login:
+We can understand why this worked by re-examining the functions called within the login method:
+
 
 ```js
 const user = users.get(users.lookup(req.body.username));
@@ -116,27 +114,27 @@ lookup(username) {
 }
 ```
 
-In javascript, alcuni oggetti quando sono presenti in una espressione booleana, sono sempre valutati a `True` e altri a `False`. Questi oggetti vengnono chiamati rispettivamente [Truthy](https://developer.mozilla.org/en-US/docs/Glossary/Truthy) e [Falsy](https://developer.mozilla.org/en-US/docs/Glossary/Falsy).
+In JavaScript, some objects, when used in a boolean expression, are always evaluated as `true`, while others are evaluated as `false`. These are known respectively as [Truthy](https://developer.mozilla.org/en-US/docs/Glossary/Truthy) and [Falsy](https://developer.mozilla.org/en-US/docs/Glossary/Falsy).
 
-Qui possiamo vedere due esempi di questo tipo di oggetti:
+Here we can see two examples of such objects:
 
-Nella funzione `lookup`, se passiamo un valore `undefined` verrà restituito sempre `undefined`.
+In the `lookup` function, if we pass an `undefined` value, it will always return `undefined`.
 
-La funzione `get(uid)` proverà a valutare `this.users[undefined]`, ma essendo `undefined` un Falsy, restituirà un oggetto vuoto.
+The `get(uid)` function will attempt to evaluate `this.users[undefined]`, but since `undefined` is Falsy, it will return an empty object.
 
-Abbiamo poi il seguente controllo:
+We then have the following check:
 ```js
 if (user && user.password === req.body.password)
 ```
-dove `user` è un oggetto vuoto, quindi un Truthy.
+where `user` is an empty object, therefore a Truthy value.
 
-Lo stesso si applica per la verifica della password: se non inviamo una richiesta e dato che l'oggetto vuoto non avrà un attributo password, entrambi i valori saranno `undefined` quindi si avrà `undefined===undefined` che è vera come condizione.
+The same applies to password verification: if we do not send any value in the request, and since the empty object does not have a `password` attribute, both values will be `undefined`. As a result, the condition `undefined === undefined` evaluates to `true`.
 
-Abbiamo così il nostro cookie corretto.
+This way, we obtain a valid cookie.
 
-Ora anche per l'accesso all'endpoint `vault`, l'attributo `user.restricted` sarà `undefined` e valutato come False: invece del contenuto del vault verrà mostrata la flag.
+Now, when accessing the `/vault` endpoint, the `user.restricted` attribute will also be `undefined`, which is evaluated as `false`. Consequently, instead of the vault contents, the flag is displayed.
 
-Tutto ciò che bisogna fare è quindi settare il cookie con il valore ottenuto dalla richiesta di login "vuota" e possiamo leggere la flag correttamente.
+All that remains is to set the cookie with the value obtained from the "empty" login request, and we can correctly read the flag.
 
 ![set_cookie](./pics/12_set_cookie.png)
 ![flag](./pics/13_flag.png)
