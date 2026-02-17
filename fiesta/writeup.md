@@ -1,6 +1,6 @@
 # Fiesta - Fault Injection
 
-Descrizione della challenge:
+Challenge Description
 
 >Elias Öberson @DrAndroid1337 - Nov 1
 >
@@ -28,24 +28,21 @@ Descrizione della challenge:
 >Now I am curious about the device and >its content. Would I be able to
 >unlock it using FI?
 
-Questa Challenge Ha dimostrato limiti tecnici dei nostri mezzi. Abbiamo provato a farne una implementazione ma malgrado anche l'utilizzo di una Zybo z7-10 non siamo riusciti a ricavare la flag anche se veniva richiesta esplicitamente di eseguire una Fault Injection.
+This challenge demonstrated the technical limitations of our tools. We attempted to implement an attack, but despite also using a Zybo Z7-10, we were unable to retrieve the flag, even though the challenge explicitly required performing a Fault Injection.
 
-Adesso verrà elencato i vari procedimenti che sono stati eseguiti.
+Below are the various procedures that were carried out.
 
-Abbiamo caricato il binario della challenge e abbiamo notato che stampava sulla seriale il banner della challenge e dopodiche in 
-loop la scitta "LOCK". <br>
+We loaded the challenge binary and observed that it printed the challenge banner on the serial interface and then continuously displayed the string **"LOCK"** in a loop. <br>
 
 ![Lock](./pics/lock_lock.png)
 
-Il nostro primo pensiero è che veniva eseguito un blocco di codice, che essendo sempre vera stampava sempre LOCK. Quindi in qualche modo dovevamo far si che quando veniva effetuata il controlllo del while esso veniva saltato.Facendo così magari ci veniva stampato la flag sulla seriale.
+Our first thought was that a block of code was being executed where a condition was always true, causing **LOCK** to be printed repeatedly. Therefore, we needed a way to make the program skip the `while` check. Doing so might have caused the flag to be printed on the serial interface.
 
+We then considered interrupting the Arduino’s normal execution by briefly cutting its power supply during runtime. <br>
 
-Abbiamo quindi pensato di far si che durante l'esecuzione del processo sull'arduino di togliere la tensione dell'Arduino in un istante molto breve per provare a interrompere il funzionamento standard.<br>
+Question: How could we achieve this, and more importantly, which tool should we use?
 
-Domanda? Come lo facciamo e domanda più importante con quale strumento?
-
-Inizialmente abbiamo considerato di usare un altro arduino e collegare questo alla porta di alimentazione dell'arduino con il binario.
-Abbiamo scritto un piccolo script che per un istante davvero minimo esso toglie l'alimentazione. Ecco un snippet che ci consentva di fare tutto ciò in un intervallo da noi scelto.
+Initially, we considered using another Arduino connected to the power supply line of the Arduino running the binary. We wrote a small script that momentarily removed power for an extremely short time interval. Below is a snippet that allowed us to perform this action within a chosen time window.
 
 ```c
   if (uiInterval != 0) {
@@ -66,25 +63,27 @@ Abbiamo scritto un piccolo script che per un istante davvero minimo esso toglie 
 
 ![setup_arduino](./pics/2_arduino.jpg)
 
-Problema....Non funziona.<br>
-abbiamo provato molte volte a farlo eseguire ma purtoppo al massimo riusciamo a farla solo riavviare.
-Dopo vari tentativi attraverso il logic analayzer abbiamo studiato il segnale e la transizione da alto->basso a basso->alto avveniva nel ordine dei microscendi, che tecnicamente è troppo per far si che l'arduino abbia abbastanza tensione per rimanare accesso.
+Problem… it does not work. <br>
+We tried multiple times to execute the attack, but unfortunately the best result we achieved was simply forcing the device to reboot.
 
+After several attempts, we analyzed the signal using a logic analyzer. We observed that the high → low and low → high transitions occurred on the order of microseconds, which is technically too long for the Arduino to maintain sufficient voltage to remain powered on.
 
-Cerchiamo allora una strada differente.
-Dato che uno di noi fa Embedded abbiamo utilizzato la zybo z7-10. Ovvero una scheda con un FPGA molto potente data in dotazione per fare l'esame.
-Purtroppo è sorto un problema. i Pin della Zybo come tensione d'uscita sono a 3.3v ma la tensione di almientazione è di 5 v.
-Allora l'unico modo per far si che si potesse solo utilizzare uno dei pin della scheda è portare la tensione d'uscita a 5v.
-Abbiamo realizzato il seguente circuito per poter eseguire questa "trasformazione" della tensione.
+We therefore looked for a different approach.
 
+Since one of us works with embedded systems, we decided to use the Zybo Z7-10 — an FPGA development board provided for the exam and equipped with a powerful FPGA.
+
+Unfortunately, another issue arose. The Zybo’s output pins operate at **3.3V**, while the Arduino power supply requires **5V**. The only viable solution was therefore to shift the output voltage from 3.3V to 5V.
+
+We built the following circuit to perform this voltage conversion:
 
 ![Level shifter](./pics/level_shift.gif)
 
-con alcuni test abbiamo constatato che il circuito funziona e in qualche modo riusciamo a portare la tensione da 3,3v a 5v grazie all'utilizzo dell'arduino che fa da tensione d'ingresso.
+Through several tests, we verified that the circuit worked. We were able to shift the voltage from 3.3V to 5V by leveraging the Arduino as a voltage reference.
 
 ![Level shifter realizzato](./pics/logic_level_reale.jpg)
 
-Ottimo ora bisogna simulare quello che abbiamo fatto con l'arduino che eseguiva lo scipt ma implementarlo in vhdl e lo facciamo riutillizando un vecchio divisore di frequenza implementata per l'esame di Asdi
+Great — now we needed to replicate the behavior previously implemented with the Arduino script, but this time using VHDL. To do so, we reused an old frequency divider designed for the ASDI exam.
+
 
 ```vhdl
 entity divisore_di_frequenza is
@@ -123,16 +122,18 @@ end Behavioral;
 
 ```
 
-Utillizando poi un file Zybo-z7-10-Master.xdc siamo stati in grado di poter associare il pin second all'uscita 1 dei pin JC che si trovano sulla board.
-Realizzato il tutto abbiamo collegato tutto insieme...
+By using a `Zybo-z7-10-Master.xdc` file, we were able to map the `second` signal to output pin 1 of the **JC** pin header on the board.
+
+After completing the implementation, we connected everything together:
 
 ![setup](./pics/setup.jpg)
 
-Risultato? Non ha funzionato. purtoppo ci sono molti fattori che devono essere messo in gioco crediamo che non riusciamo a raggiungere un intervallo di tempo abbastanza piccolo da poter aggirare il binaro nemmeno per colpa della zybo ma dal fatto che abbiamo usato componenti molto semplici per realizzare il circuito e magari non riescono a reagire all'impulso dell'FPGA come vorremmo.
-Un'altra possibilità potrebbe essere quella dell'elevata presenza di condensatori sulla board che probabilmente mantengono la tensione troppo stabile per fare questo tipo di attacchi con il setup che abbiamo.
+Result? It did not work. Unfortunately, many factors must be taken into account. We believe we were unable to reach a sufficiently small time interval to successfully bypass the binary.
 
-Infine a causa delle poche possibilità ci siamo fermati e quindi non siamo riusciti a prendere la flag.
+The limitation is likely not caused by the Zybo itself, but rather by the simplicity of the components used to build the circuit. These components may not have reacted quickly enough to the FPGA-generated pulses.
 
-Esistono però strumenti adatti per questa ed altre tipologie di attacchi come la "Chip Whisperer" che però non avendo non abbiamo potuto testare.
+Another possible explanation is the significant presence of capacitors on the board, which likely stabilize the voltage too effectively, preventing this type of attack from succeeding with our setup.
 
+Due to these constraints, we ultimately stopped the experimentation and were unable to retrieve the flag.
 
+There are, however, specialized tools designed for these types of attacks, such as the **ChipWhisperer**, which we were unable to test due to lack of access to the hardware.
