@@ -97,8 +97,8 @@ This way, we find that Bob’s and Gary’s keys share a common factor!
 
 ![Chiavi fattore comune](./chaivi_comune.png)
 
-Having noticed this, we can proceed to compute the other factor by dividing `n` Having noticed this, we can proceed to compute the other factor by dividing
-
+Having noticed this, we can proceed to compute the other factor by dividing `n` by the first one, and thus obtain all the information needed to generate a valid
+private key:
 ```python
 
 n1 = pub1
