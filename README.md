@@ -1,4 +1,4 @@
-Elenco challenge proposte:
+List of proposed challenges:
 
 - [CyberChallenge 2022 - Magic Number](magic_number/writeup.md) [Reverse enginnering]
 - [RHME-2016 - Whac the mole](whac_the_mole/writeup.md) [Hardware]
@@ -6,5 +6,5 @@ Elenco challenge proposte:
 - [RHME-2016 - Key Server](key_server/writeup.md) [Crypto]
 - [AngstromCTF 22 - Secure Vault](secure-vault/writeup.md) [Web]
 
-Challenge non completate:
+Incomplete challenges:
 - [RHME-2016 - Fiesta](fiesta/writeup.md) [Fault Injection]
