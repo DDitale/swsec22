@@ -1,6 +1,6 @@
 # Key Server - Crypto
 
-Descrizione della challenge
+Challenge description:
 
 >We have received a portable asymmetric key storage for evaluation purposes.
 > This portable device was manufactured by Ebian Corp to
@@ -14,8 +14,7 @@ give them away like candy, secure candy.
 >
 ---
 
-All'avvio del programma, sul monitor seriale si presenta il seguente banner:
-
+When the program starts, the following banner appears on the serial monitor:
 ```
 Ebian Corp has a repository to store its adminstrators' public keys.
 1)If you are a customer you can list all the public keys.
@@ -24,9 +23,9 @@ Just sign the plaintext "admin" and more options will be provided.
 The parameters to be used for the signature are SHA1 and PKCS1_v1_5
 ```
 
-Da qui possiamo capire che abbiamo a che fare con chiavi RSA algoritmi di firma digitale.
+From this, we can understand that we are dealing with RSA keys and digital signature algorithms.
 
-Usando il comando `1`, possiamo vedere l'elenco delle chiavi salvate sulla piattaforma
+By using command `1`, we can view the list of keys stored on the platform.
 
 ```
 > 1
@@ -47,17 +46,17 @@ Gary:
 360f986cc2db7b7f2d9431e9324280109ac1ed43900a57531ee2878e895c6f5b4ba4311051413d
 ```
 
-Per ogni utente è salvato solo un valore, però sappiamo che le chiavi RSA pubbliche sono definite da una coppia (n,e).
+For each user only a single value is stored, but we know that RSA public keys are defined by a pair (n,e).
 
-Essendo `e` un valore solitamente di piccole dimensioni, possiamo dare per scontato che quello presente in lista sia `n` e che `e` assuma un valore standard (solitamente 2^16 + 1, tale da rendere più efficienti le operazioni di elevazione a potenza - algoritmo square & multiply)
+since `e` is usually a small value, we can assume that the value shown in the list is n and that `n` and that `e` takes a standard value (typically 2^16 + 1, chosen to make exponentiation operations more efficient (square-and-multiply algorithm).
 
-Per quanto riguarda le chiavi, possiamo presupporre che tra queste vi siano alcune con almeno un fattore comune. Questo perché la generazione di numeri primi pseudorandomici abbastanza grandi è relativamente complessa per dispositivi embedded, inoltre potrebbe essere stato usato per più generazioni lo stesso seed.
+As for the keys, we can assume that among them there are some that share at least one common factor. This is because generating sufficiently large pseudorandom prime numbers is relatively complex for embedded devices, and the same seed may have been used across multiple generations.
 
-Questo può esserci di aiuto, in quanto entrambe le chiavi, pubblica e privata, sono calcolate sulla base di 2 numeri primi abbastanza grandi generati casualmente: il prodotto di questa coppia coincide proprio con `n` e, una volta fissato `e`, possiamo ricavare anche `d` ovvero l'esponente della chiave privata, dalla sua definizione: `d*e = 1 mod(λ(n))` dove `λ(n)` è solitamente calcolato come `(p-1)*(q-1)`
+This can help us, because both the public and private keys are computed starting from two fairly large randomly generated prime numbers: the product of this pair is exactly `n` and, once `e` is fixed, we can also derive `d` he private-key exponent, from its definition: `d*e = 1 mod(λ(n))` where `λ(n)` s usually computed as `(p-1)*(q-1)`
 
-Una volta noti quindi i due fattori che hanno generato le chiavi, possiamo ricavare una chiave privata valida e firmare con essa il plaintext `admin` così come scritto nel banner iniziale.
+Once we know the two factors that generated the keys, we can derive a valid private key and use it to sign the plaintex `admin` as stated in the initial banner.
 
-Procediamo quindi con il calcolare il massimo comune divisore tra tutte le chiavi
+We therefore proceed by calculating the greatest common divisor among all the keys.
 
 ```python
 ...
@@ -94,11 +93,11 @@ for pub1, pub2 in combinations(keys.values(), 2):
 
 ...
 ```
-Troviamo così che le chiavi di Bob e Gary hanno un fattore in comune!
+This way, we find that Bob’s and Gary’s keys share a common factor!
 
 ![Chiavi fattore comune](./chaivi_comune.png)
 
-Noto questo, possiamo proseguire con il calcolare l'altro fattore dividendo `n` per il primo e ricavare così tutte le informazioni necessarie per generare una chiave privata valida:
+Having noticed this, we can proceed to compute the other factor by dividing `n` Having noticed this, we can proceed to compute the other factor by dividing
 
 ```python
 
